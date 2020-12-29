@@ -1,5 +1,10 @@
+use packman::*;
+use tokio::sync::{oneshot, Mutex};
+
 mod procurement;
 
-fn main() {
-    println!("Hello, world!");
+struct ProcurementService {
+  procurements: Mutex<VecPack<procurement::Procurement>>,
 }
+
+fn main() {}
