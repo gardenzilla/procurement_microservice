@@ -1,0 +1,4 @@
+data/
+target/
+!target/release/procurement_microservice
+Cargo.lock
