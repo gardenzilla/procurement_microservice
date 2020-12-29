@@ -7,5 +7,13 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+chrono = {version = "0.4", features = ["serde"]}
+futures = "*"
 gzlib = "*"
 packman = "*"
+prost = "0.6"
+serde = {version = "1.0", features = ["derive"]}
+serde_json = {version = "1.0", default-features = false, features = ["alloc"]}
+serde_yaml = "0.8"
+tokio = {version = "0.2", features = ["full"]}
+tonic = "0.3"
