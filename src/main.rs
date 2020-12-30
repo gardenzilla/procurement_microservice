@@ -396,7 +396,7 @@ impl Procurement for ProcurementService {
   }
 
   async fn remove(&self, request: Request<RemoveRequest>) -> Result<Response<()>, Status> {
-    let res = self.remove_procurement(request.into_inner()).await?;
+    let _ = self.remove_procurement(request.into_inner()).await?;
     Ok(Response::new(()))
   }
 
