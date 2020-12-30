@@ -137,9 +137,9 @@ where
 
   /// Try update UPL SKU
   /// Error if UPL ID not there
-  pub fn upl_update_sku(&mut self, upl_id: String, sku: u32) -> ProcResult<&Self> {
+  pub fn upl_update_sku(&mut self, upl_id: &str, sku: u32) -> ProcResult<&Self> {
     for upl in &mut self.upl_candidates {
-      if *upl.upl_id == upl_id {
+      if upl.upl_id == upl_id {
         upl.update_sku(sku);
         return Ok(self);
       }
@@ -149,9 +149,9 @@ where
 
   /// Try update UPL piece
   /// Error if UPL ID not there
-  pub fn upl_update_piece(&mut self, upl_id: String, piece: u32) -> ProcResult<&Self> {
+  pub fn upl_update_piece(&mut self, upl_id: &str, piece: u32) -> ProcResult<&Self> {
     for upl in &mut self.upl_candidates {
-      if *upl.upl_id == upl_id {
+      if upl.upl_id == upl_id {
         upl.update_piece(piece);
         return Ok(self);
       }
@@ -163,16 +163,29 @@ where
   /// Error if UPL ID not there
   pub fn upl_update_best_before(
     &mut self,
-    upl_id: String,
+    upl_id: &str,
     best_before: Option<DateTime<Utc>>,
   ) -> ProcResult<&Self> {
     for upl in &mut self.upl_candidates {
-      if *upl.upl_id == upl_id {
+      if upl.upl_id == upl_id {
         upl.update_best_before(best_before);
         return Ok(self);
       }
     }
     Err("A megadott UPL azonosító nem szerepel a rendelésben!".into())
+  }
+
+  pub fn upl_update_all(
+    &mut self,
+    upl_id: &str,
+    sku: u32,
+    piece: u32,
+    best_before: Option<DateTime<Utc>>,
+  ) -> ProcResult<&Self> {
+    self.upl_update_sku(upl_id, sku)?;
+    self.upl_update_piece(upl_id, piece)?;
+    self.upl_update_best_before(upl_id, best_before)?;
+    Ok(self)
   }
 
   /// Try remove UPL
@@ -258,6 +271,17 @@ where
     self.status = Status::Closed;
     // return self reference
     Ok(self)
+  }
+
+  /// Try to set status
+  pub fn set_status(&mut self, status: Status, created_by: String) -> ProcResult<&Self> {
+    match status {
+      Status::Ordered => self.set_status_ordered(created_by),
+      Status::Arrived => self.set_status_arrived(created_by),
+      Status::Processing => self.set_status_processing(created_by),
+      Status::Closed => self.set_status_closed(created_by),
+      _ => Err("Not allowed status change!".into()),
+    }
   }
 }
 

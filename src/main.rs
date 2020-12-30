@@ -1,10 +1,9 @@
-use chrono::{DateTime, Local, Utc};
-use gzlib::prelude::*;
+use chrono::{DateTime, Utc};
 use gzlib::proto::procurement::procurement_server::*;
 use gzlib::proto::procurement::*;
 use packman::*;
 use prelude::{ServiceError, ServiceResult};
-use std::{collections::HashMap, env, path::PathBuf};
+use std::{env, path::PathBuf};
 use tokio::sync::{oneshot, Mutex};
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -52,6 +51,7 @@ impl ProcurementService {
     Ok(new_procurement.into())
   }
 
+  /// Try set delivery date
   async fn set_delivery(&self, r: SetDeliveryDateRequest) -> ServiceResult<ProcurementObject> {
     // Process delivery date
     let ddate: Option<DateTime<Utc>> = match r.delivery_date.len() {
@@ -80,6 +80,7 @@ impl ProcurementService {
     Ok(res.into())
   }
 
+  /// Try set reference
   async fn set_reference(&self, r: SetReferenceRequest) -> ServiceResult<ProcurementObject> {
     // Try to set reference
     let res = self
@@ -93,6 +94,229 @@ impl ProcurementService {
       .clone();
 
     // Return self as ProcurementObject
+    Ok(res.into())
+  }
+
+  /// Try to add SKU
+  async fn add_sku(&self, r: AddSkuRequest) -> ServiceResult<ProcurementObject> {
+    // Try to get SKU object
+    let sku_object = r.sku.ok_or(ServiceError::internal_error(
+      "Belső hiba! A SKU object üres!",
+    ))?;
+
+    // Try to add SKU
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .find_id_mut(&r.procurement_id)?
+      .as_mut()
+      .unpack()
+      .sku_add(
+        sku_object.sku,
+        sku_object.ordered_amount,
+        sku_object.expected_net_price,
+      )
+      .map_err(|e| ServiceError::bad_request(&e))?
+      .clone();
+
+    // Return procurement as ProcurementObject
+    Ok(res.into())
+  }
+
+  /// Try to remove SKU
+  async fn remove_sku(&self, r: RemoveSkuRequest) -> ServiceResult<ProcurementObject> {
+    // Try to remove SKU
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .find_id_mut(&r.procurement_id)?
+      .as_mut()
+      .unpack()
+      .sku_remove(r.sku)
+      .map_err(|e| ServiceError::bad_request(&e))?
+      .clone();
+
+    // Return procurement as ProcurementObject
+    Ok(res.into())
+  }
+
+  /// Try to set SKU piece
+  async fn set_sku_piece(&self, r: SetSkuPieceRequest) -> ServiceResult<ProcurementObject> {
+    // Try to set SKU piece
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .find_id_mut(&r.procurement_id)?
+      .as_mut()
+      .unpack()
+      .sku_update_amount(r.sku, r.piece)
+      .map_err(|e| ServiceError::bad_request(&e))?
+      .clone();
+
+    // Return procurement as ProcurementObject
+    Ok(res.into())
+  }
+
+  /// Try to set SKU price
+  async fn set_sku_price(&self, r: SetSkuPriceRequest) -> ServiceResult<ProcurementObject> {
+    // Try to set SKU price
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .find_id_mut(&r.procurement_id)?
+      .as_mut()
+      .unpack()
+      .sku_update_price(r.sku, r.expected_net_price)
+      .map_err(|e| ServiceError::bad_request(&e))?
+      .clone();
+
+    // Return procurement as ProcurementObject
+    Ok(res.into())
+  }
+
+  /// Try to add UPL
+  async fn add_upl(&self, r: AddUplRequest) -> ServiceResult<ProcurementObject> {
+    let upl_candidate = r.upl_candidate.ok_or(ServiceError::internal_error(
+      "Missing UPL candidate from message!",
+    ))?;
+
+    // Process bestbefore date
+    let bdate: Option<DateTime<Utc>> = match upl_candidate.best_before.len() {
+      // If a not empty string, then try to parse as rfc3339
+      x if x > 0 => {
+        let date = DateTime::parse_from_rfc3339(&upl_candidate.best_before)
+          .map_err(|_| ServiceError::bad_request("A megadott lejárati dátum hibás!"))?;
+        Some(date.with_timezone(&Utc))
+      }
+      // If empty string then None
+      _ => None,
+    };
+
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .find_id_mut(&r.procurement_id)?
+      .as_mut()
+      .unpack()
+      .upl_add(
+        upl_candidate.upl_id,
+        upl_candidate.sku,
+        upl_candidate.upl_piece,
+        bdate,
+      )
+      .map_err(|e| ServiceError::bad_request(&e))?
+      .clone();
+
+    // Return procurement as ProcurementObject
+    Ok(res.into())
+  }
+
+  /// Try update UPL
+  async fn update_upl(&self, r: UpdateUplRequest) -> ServiceResult<ProcurementObject> {
+    // Process bestbefore date
+    let bdate: Option<DateTime<Utc>> = match r.best_before.len() {
+      // If a not empty string, then try to parse as rfc3339
+      x if x > 0 => {
+        let date = DateTime::parse_from_rfc3339(&r.best_before)
+          .map_err(|_| ServiceError::bad_request("A megadott lejárati dátum hibás!"))?;
+        Some(date.with_timezone(&Utc))
+      }
+      // If empty string then None
+      _ => None,
+    };
+
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .find_id_mut(&r.procurement_id)?
+      .as_mut()
+      .unpack()
+      .upl_update_all(&r.upl_id, r.sku, r.piece, bdate)
+      .map_err(|e| ServiceError::bad_request(&e))?
+      .clone();
+
+    // Return procurement as ProcurementObject
+    Ok(res.into())
+  }
+
+  /// Try to remove UPL Candidate
+  async fn remove_upl(&self, r: RemoveUplRequest) -> ServiceResult<ProcurementObject> {
+    // Try to remove UPL candidate
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .find_id_mut(&r.procurement_id)?
+      .as_mut()
+      .unpack()
+      .upl_remove(r.upl_id)
+      .map_err(|e| ServiceError::bad_request(&e))?
+      .clone();
+
+    // Return procurement as ProcurementObject
+    Ok(res.into())
+  }
+
+  /// Try to remove Procurement
+  /// Only with Status::New
+  async fn remove_procurement(&self, r: RemoveRequest) -> ServiceResult<()> {
+    // Check if procurement exists and can be removed
+    let can_remove: bool = self
+      .procurements
+      .lock()
+      .await
+      .find_id(&r.procurement_id)?
+      .get(|p| {
+        if let procurement::Status::New = p.status {
+          return true;
+        }
+        false
+      });
+
+    // Try to remove as Pack
+    if can_remove {
+      self
+        .procurements
+        .lock()
+        .await
+        .remove_pack(&r.procurement_id)?;
+    }
+
+    // Returns Ok(())
+    Ok(())
+  }
+
+  /// Try to set new Status to the procurement
+  async fn set_stats(&self, r: SetStatusRequest) -> ServiceResult<ProcurementObject> {
+    // Try to set new status
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .find_id_mut(&r.procurement_id)?
+      .as_mut()
+      .unpack()
+      .set_status(
+        match set_status_request::Status::from_i32(r.status)
+          .ok_or(ServiceError::bad_request("Nem létező státusz azonosító!"))?
+        {
+          set_status_request::Status::Ordered => procurement::Status::Ordered,
+          set_status_request::Status::Arrived => procurement::Status::Arrived,
+          set_status_request::Status::Processing => procurement::Status::Processing,
+          set_status_request::Status::Closed => procurement::Status::Closed,
+        },
+        r.created_by,
+      )
+      .map_err(|e| ServiceError::bad_request(&e))?
+      .clone();
+
+    // Return procurement as ProcurementObject
     Ok(res.into())
   }
 }
@@ -127,60 +351,69 @@ impl Procurement for ProcurementService {
     &self,
     request: Request<AddSkuRequest>,
   ) -> Result<Response<ProcurementObject>, Status> {
-    todo!()
+    let res = self.add_sku(request.into_inner()).await?.clone();
+    Ok(Response::new(res))
   }
 
   async fn remove_sku(
     &self,
     request: Request<RemoveSkuRequest>,
   ) -> Result<Response<ProcurementObject>, Status> {
-    todo!()
+    let res = self.remove_sku(request.into_inner()).await?;
+    Ok(Response::new(res))
   }
 
   async fn set_sku_piece(
     &self,
     request: Request<SetSkuPieceRequest>,
   ) -> Result<Response<ProcurementObject>, Status> {
-    todo!()
+    let res = self.set_sku_piece(request.into_inner()).await?;
+    Ok(Response::new(res))
   }
 
   async fn add_upl(
     &self,
     request: Request<AddUplRequest>,
   ) -> Result<Response<ProcurementObject>, Status> {
-    todo!()
+    let res = self.add_upl(request.into_inner()).await?;
+    Ok(Response::new(res))
   }
 
   async fn update_upl(
     &self,
     request: Request<UpdateUplRequest>,
   ) -> Result<Response<ProcurementObject>, Status> {
-    todo!()
+    let res = self.update_upl(request.into_inner()).await?;
+    Ok(Response::new(res))
   }
 
   async fn remove_upl(
     &self,
     request: Request<RemoveUplRequest>,
   ) -> Result<Response<ProcurementObject>, Status> {
-    todo!()
+    let res = self.remove_upl(request.into_inner()).await?;
+    Ok(Response::new(res))
   }
 
   async fn remove(&self, request: Request<RemoveRequest>) -> Result<Response<()>, Status> {
-    todo!()
+    let res = self.remove_procurement(request.into_inner()).await?;
+    Ok(Response::new(()))
   }
 
   async fn set_sku_price(
     &self,
     request: Request<SetSkuPriceRequest>,
   ) -> Result<Response<ProcurementObject>, Status> {
-    todo!()
+    let res = self.set_sku_price(request.into_inner()).await?;
+    Ok(Response::new(res))
   }
 
   async fn set_status(
     &self,
     request: Request<SetStatusRequest>,
   ) -> Result<Response<ProcurementObject>, Status> {
-    todo!()
+    let res = self.set_stats(request.into_inner()).await?;
+    Ok(Response::new(res))
   }
 }
 
