@@ -1,4 +1,5 @@
 use chrono::prelude::*;
+use gzlib::id::LuhnCheck;
 use packman::VecPackMember;
 use serde::{Deserialize, Serialize};
 
@@ -129,7 +130,7 @@ where
     // Push UPL candidate
     self
       .upl_candidates
-      .push(UplCandidate::new(upl_id, sku, piece, best_before));
+      .push(UplCandidate::new(upl_id, sku, piece, best_before)?);
     // Return self ref
     Ok(self)
   }
@@ -319,13 +320,22 @@ pub struct UplCandidate {
 }
 
 impl UplCandidate {
-  pub fn new(upl_id: String, sku: u32, upl_piece: u32, best_before: Option<DateTime<Utc>>) -> Self {
-    Self {
+  pub fn new(
+    upl_id: String,
+    sku: u32,
+    upl_piece: u32,
+    best_before: Option<DateTime<Utc>>,
+  ) -> ProcResult<Self> {
+    // Check if ID correct to LuhnCheck
+    upl_id
+      .luhn_check_ref()
+      .map_err(|_| "A megadott UPL ID hibás!".to_string())?;
+    Ok(Self {
       upl_id,
       sku,
       upl_piece,
       best_before,
-    }
+    })
   }
   pub fn update_sku(&mut self, sku: u32) {
     self.sku = sku;

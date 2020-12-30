@@ -1,7 +1,9 @@
+use chrono::{DateTime, Local, Utc};
 use gzlib::prelude::*;
 use gzlib::proto::procurement::procurement_server::*;
 use gzlib::proto::procurement::*;
 use packman::*;
+use prelude::{ServiceError, ServiceResult};
 use std::{collections::HashMap, env, path::PathBuf};
 use tokio::sync::{oneshot, Mutex};
 use tonic::{transport::Server, Request, Response, Status};
@@ -14,10 +16,84 @@ struct ProcurementService {
 }
 
 impl ProcurementService {
+  // Create new ProcurementService
   fn new(db: VecPack<procurement::Procurement>) -> Self {
     Self {
       procurements: Mutex::new(db),
     }
+  }
+
+  /// Calculate the next procurement ID
+  async fn next_id(&self) -> u32 {
+    let mut last_id = 0;
+    self.procurements.lock().await.iter().for_each(|proc| {
+      let proc_id = proc.unpack().id;
+      if proc_id > last_id {
+        last_id = proc_id;
+      }
+    });
+    last_id + 1
+  }
+
+  /// Create a new procurement
+  async fn create_new(&self, r: CreateNewRequest) -> ServiceResult<ProcurementObject> {
+    // Create the new procurement object
+    let new_procurement =
+      procurement::Procurement::new(self.next_id().await, r.source_id, r.created_by);
+
+    // Store new procurement
+    self
+      .procurements
+      .lock()
+      .await
+      .insert(new_procurement.clone())?;
+
+    // Return procurement as ProcurementObject
+    Ok(new_procurement.into())
+  }
+
+  async fn set_delivery(&self, r: SetDeliveryDateRequest) -> ServiceResult<ProcurementObject> {
+    // Process delivery date
+    let ddate: Option<DateTime<Utc>> = match r.delivery_date.len() {
+      // If a not empty string, then try to parse as rfc3339
+      x if x > 0 => {
+        let date = DateTime::parse_from_rfc3339(&r.delivery_date)
+          .map_err(|_| ServiceError::bad_request("A megadott dátum hibás!"))?;
+        Some(date.with_timezone(&Utc))
+      }
+      // If empty string then None
+      _ => None,
+    };
+
+    // Try to set delivery
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .find_id_mut(&r.procurement_id)?
+      .as_mut()
+      .unpack()
+      .set_delivery_date(ddate)
+      .clone();
+
+    // Return self as ProcurementObject
+    Ok(res.into())
+  }
+
+  async fn set_reference(&self, r: SetReferenceRequest) -> ServiceResult<ProcurementObject> {
+    // Try to set reference
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .find_id_mut(&r.procurement_id)?
+      .as_mut()
+      .unpack()
+      .set_reference(r.reference)
+      .clone();
+
+    // Return self as ProcurementObject
+    Ok(res.into())
   }
 }
 
@@ -27,21 +103,24 @@ impl Procurement for ProcurementService {
     &self,
     request: Request<CreateNewRequest>,
   ) -> Result<Response<ProcurementObject>, Status> {
-    todo!()
+    let res = self.create_new(request.into_inner()).await?;
+    Ok(Response::new(res))
   }
 
   async fn set_delivery_date(
     &self,
     request: Request<SetDeliveryDateRequest>,
   ) -> Result<Response<ProcurementObject>, Status> {
-    todo!()
+    let res = self.set_delivery(request.into_inner()).await?;
+    Ok(Response::new(res))
   }
 
   async fn set_reference(
     &self,
     request: Request<SetReferenceRequest>,
   ) -> Result<Response<ProcurementObject>, Status> {
-    todo!()
+    let res = self.set_reference(request.into_inner()).await?;
+    Ok(Response::new(res))
   }
 
   async fn add_sku(
