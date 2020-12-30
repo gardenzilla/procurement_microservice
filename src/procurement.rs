@@ -2,6 +2,8 @@ use chrono::prelude::*;
 use packman::VecPackMember;
 use serde::{Deserialize, Serialize};
 
+pub type ProcResult<T> = Result<T, String>;
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Status {
   New,
@@ -23,7 +25,7 @@ pub struct Procurement {
   pub source_id: u32,
   pub reference: String,
   pub estimated_delivery_date: Option<DateTime<Utc>>,
-  pub items: Vec<ProcurementItem>,
+  pub sku_items: Vec<ProcurementItem>,
   pub upl_candidates: Vec<UplCandidate>,
   pub status: Status,
   pub created_at: DateTime<Utc>,
@@ -40,12 +42,70 @@ where
       source_id,
       reference: "".into(),
       estimated_delivery_date: None,
-      items: Vec::new(),
+      sku_items: Vec::new(),
       upl_candidates: Vec::new(),
       status: Status::New,
       created_at: Utc::now(),
       created_by,
     }
+  }
+  pub fn set_reference(&mut self, reference: String) -> &Self {
+    self.reference = reference;
+    self
+  }
+  pub fn set_delivery_date(&mut self, delivery_date: Option<DateTime<Utc>>) -> &Self {
+    self.estimated_delivery_date = delivery_date;
+    self
+  }
+  pub fn sku_add(&mut self, sku: u32, amount: u32, net_price: u32) -> ProcResult<&Self> {
+    todo!()
+  }
+  pub fn sku_update_amount(&mut self, sku: u32, amount: u32) -> ProcResult<&Self> {
+    todo!()
+  }
+  pub fn sku_update_price(&mut self, sku: u32, price: u32) -> ProcResult<&Self> {
+    todo!()
+  }
+  pub fn sku_remove(&mut self, sku: u32) -> ProcResult<&Self> {
+    todo!()
+  }
+  pub fn upl_add(
+    &mut self,
+    upl_id: String,
+    sku: u32,
+    piece: u32,
+    best_before: Option<DateTime<Utc>>,
+  ) -> ProcResult<&Self> {
+    todo!()
+  }
+  pub fn upl_update_sku(&mut self, upl_id: String, sku: u32) -> ProcResult<&Self> {
+    todo!()
+  }
+  pub fn upl_update_piece(&mut self, upl_id: String, piece: u32) -> ProcResult<&Self> {
+    todo!()
+  }
+  pub fn upl_update_best_before(
+    &mut self,
+    upl_id: String,
+    best_before: Option<DateTime<Utc>>,
+  ) -> ProcResult<&Self> {
+    todo!()
+  }
+  pub fn upl_remove(&mut self, upl_id: String) -> ProcResult<&Self> {
+    todo!()
+  }
+  // , _created_by: String for the future hystory implementation
+  pub fn set_status_ordered(&mut self, _created_by: String) -> ProcResult<&Self> {
+    todo!()
+  }
+  pub fn set_status_arrived(&mut self, _created_by: String) -> ProcResult<&Self> {
+    todo!()
+  }
+  pub fn set_status_processing(&mut self, _created_by: String) -> ProcResult<&Self> {
+    todo!()
+  }
+  pub fn set_status_closed(&mut self, _created_by: String) -> ProcResult<&Self> {
+    todo!()
   }
 }
 
@@ -64,7 +124,7 @@ impl Default for Procurement {
       source_id: 0,
       reference: "".into(),
       estimated_delivery_date: None,
-      items: Vec::new(),
+      sku_items: Vec::new(),
       upl_candidates: Vec::new(),
       status: Status::default(),
       created_at: Utc::now(),
