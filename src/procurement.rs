@@ -30,7 +30,7 @@ pub struct Procurement {
   pub upl_candidates: Vec<UplCandidate>,
   pub status: Status,
   pub created_at: DateTime<Utc>,
-  pub created_by: String,
+  pub created_by: u32,
 }
 
 impl Procurement
@@ -38,7 +38,7 @@ where
   Self: Sized,
 {
   /// Create a new procurement object
-  pub fn new(id: u32, source_id: u32, created_by: String) -> Self {
+  pub fn new(id: u32, source_id: u32, created_by: u32) -> Self {
     Self {
       id,
       source_id,
@@ -203,7 +203,7 @@ where
 
   /// Try set status to ordered
   // , _created_by: String for the future hystory implementation
-  pub fn set_status_ordered(&mut self, _created_by: String) -> ProcResult<&Self> {
+  pub fn set_status_ordered(&mut self, _created_by: u32) -> ProcResult<&Self> {
     // Check if there is delivery date set
     if self.estimated_delivery_date.is_none() {
       return Err("Nincs beállítva várható érkezési dátum!".into());
@@ -219,7 +219,7 @@ where
   }
 
   /// Try set status to ordered
-  pub fn set_status_arrived(&mut self, _created_by: String) -> ProcResult<&Self> {
+  pub fn set_status_arrived(&mut self, _created_by: u32) -> ProcResult<&Self> {
     match self.status {
       Status::Ordered => {
         self.status = Status::Arrived;
@@ -230,7 +230,7 @@ where
   }
 
   /// Try set status to ordered
-  pub fn set_status_processing(&mut self, _created_by: String) -> ProcResult<&Self> {
+  pub fn set_status_processing(&mut self, _created_by: u32) -> ProcResult<&Self> {
     match self.status {
       Status::Ordered | Status::Arrived => {
         self.status = Status::Processing;
@@ -243,7 +243,7 @@ where
   }
 
   /// Try set status to ordered
-  pub fn set_status_closed(&mut self, _created_by: String) -> ProcResult<&Self> {
+  pub fn set_status_closed(&mut self, _created_by: u32) -> ProcResult<&Self> {
     // Check if its status is Processing
     match self.status {
       Status::Processing => (),
@@ -274,7 +274,7 @@ where
   }
 
   /// Try to set status
-  pub fn set_status(&mut self, status: Status, created_by: String) -> ProcResult<&Self> {
+  pub fn set_status(&mut self, status: Status, created_by: u32) -> ProcResult<&Self> {
     match status {
       Status::Ordered => self.set_status_ordered(created_by),
       Status::Arrived => self.set_status_arrived(created_by),
@@ -304,7 +304,7 @@ impl Default for Procurement {
       upl_candidates: Vec::new(),
       status: Status::default(),
       created_at: Utc::now(),
-      created_by: "".into(),
+      created_by: 0,
     }
   }
 }
