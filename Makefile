@@ -7,6 +7,7 @@ release:
 	strip target/release/procurement_microservice
 
 build:
+	cargo update
 	cargo build
 
 dev:
