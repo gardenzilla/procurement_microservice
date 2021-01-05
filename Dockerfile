@@ -1,4 +1,3 @@
-ARG package_name=procurement_microservice
 FROM debian:buster-slim
 WORKDIR /usr/local/bin
 COPY ./target/release/procurement_microservice /usr/local/bin/procurement_microservice
