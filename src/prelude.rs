@@ -1,4 +1,6 @@
-use gzlib::proto::procurement::{ProcurementItem, ProcurementObject, UplCandidate};
+use gzlib::proto::procurement::{
+  ProcurementInfoObject, ProcurementItem, ProcurementObject, UplCandidate,
+};
 
 use crate::procurement;
 
@@ -106,6 +108,23 @@ impl From<procurement::Procurement> for ProcurementObject {
         .collect::<Vec<UplCandidate>>(),
       created_at: f.created_at.to_rfc3339(),
       created_by: f.created_by,
+    }
+  }
+}
+
+impl From<procurement::Procurement> for ProcurementInfoObject {
+  fn from(p: procurement::Procurement) -> Self {
+    Self {
+      id: p.id,
+      source_id: p.source_id,
+      sku_count: p.items.len() as u32,
+      upl_count: p.upl_candidates.len() as u32,
+      estimated_delivery_date: match p.estimated_delivery_date {
+        Some(dd) => dd.to_rfc3339(),
+        None => "".to_string(),
+      },
+      created_at: p.created_at.to_rfc3339(),
+      created_by: p.created_by,
     }
   }
 }

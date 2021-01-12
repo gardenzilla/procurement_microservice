@@ -51,6 +51,47 @@ impl ProcurementService {
     Ok(new_procurement.into())
   }
 
+  /// Get procurement by ID
+  async fn get_by_id(&self, r: GetByIdRequest) -> ServiceResult<ProcurementObject> {
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .find_id(&r.procurement_id)?
+      .unpack()
+      .clone()
+      .into();
+    Ok(res)
+  }
+
+  /// Get all procurement IDs
+  async fn get_all(&self) -> ServiceResult<Vec<u32>> {
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .iter()
+      .map(|p| p.unpack().id)
+      .collect::<Vec<u32>>();
+    Ok(res)
+  }
+
+  /// Get info bulk
+  async fn get_info_bulk(
+    &self,
+    r: GetInfoBulkRequest,
+  ) -> ServiceResult<Vec<ProcurementInfoObject>> {
+    let res = self
+      .procurements
+      .lock()
+      .await
+      .iter()
+      .filter(|p| r.procurement_ids.contains(&p.unpack().id))
+      .map(|p| p.unpack().clone().into())
+      .collect::<Vec<ProcurementInfoObject>>();
+    Ok(res)
+  }
+
   /// Try set delivery date
   async fn set_delivery(&self, r: SetDeliveryDateRequest) -> ServiceResult<ProcurementObject> {
     // Process delivery date
@@ -329,6 +370,42 @@ impl Procurement for ProcurementService {
   ) -> Result<Response<ProcurementObject>, Status> {
     let res = self.create_new(request.into_inner()).await?;
     Ok(Response::new(res))
+  }
+
+  async fn get_by_id(
+    &self,
+    request: Request<GetByIdRequest>,
+  ) -> Result<Response<ProcurementObject>, Status> {
+    let res = self.get_by_id(request.into_inner()).await?;
+    Ok(Response::new(res))
+  }
+
+  async fn get_all(&self, _request: Request<()>) -> Result<Response<ProcurementIds>, Status> {
+    let procurement_ids = self.get_all().await?;
+    Ok(Response::new(ProcurementIds { procurement_ids }))
+  }
+
+  type GetInfoBulkStream = tokio::sync::mpsc::Receiver<Result<ProcurementInfoObject, Status>>;
+
+  async fn get_info_bulk(
+    &self,
+    request: Request<GetInfoBulkRequest>,
+  ) -> Result<Response<Self::GetInfoBulkStream>, Status> {
+    // Create channel for stream response
+    let (mut tx, rx) = tokio::sync::mpsc::channel(100);
+
+    // Get resources as Vec<SourceObject>
+    let res = self.get_info_bulk(request.into_inner()).await?;
+
+    // Send the result items through the channel
+    tokio::spawn(async move {
+      for ots in res.into_iter() {
+        tx.send(Ok(ots)).await.unwrap();
+      }
+    });
+
+    // Send back the receiver
+    Ok(Response::new(rx))
   }
 
   async fn set_delivery_date(
