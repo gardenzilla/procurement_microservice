@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use gzlib::proto;
 use gzlib::proto::procurement::procurement_server::*;
 use gzlib::proto::procurement::*;
 use packman::*;
@@ -344,13 +345,14 @@ impl ProcurementService {
       .as_mut()
       .unpack()
       .set_status(
-        match set_status_request::Status::from_i32(r.status)
+        match proto::procurement::Status::from_i32(r.status)
           .ok_or(ServiceError::bad_request("Nem létező státusz azonosító!"))?
         {
-          set_status_request::Status::Ordered => procurement::Status::Ordered,
-          set_status_request::Status::Arrived => procurement::Status::Arrived,
-          set_status_request::Status::Processing => procurement::Status::Processing,
-          set_status_request::Status::Closed => procurement::Status::Closed,
+          proto::procurement::Status::Ordered => procurement::Status::Ordered,
+          proto::procurement::Status::Arrived => procurement::Status::Arrived,
+          proto::procurement::Status::Processing => procurement::Status::Processing,
+          proto::procurement::Status::Closed => procurement::Status::Closed,
+          proto::procurement::Status::New => procurement::Status::New,
         },
         r.created_by,
       )

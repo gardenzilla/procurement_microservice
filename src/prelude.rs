@@ -1,5 +1,5 @@
 use gzlib::proto::procurement::{
-  ProcurementInfoObject, ProcurementItem, ProcurementObject, UplCandidate,
+  ProcurementInfoObject, ProcurementItem, ProcurementObject, Status, UplCandidate,
 };
 
 use crate::procurement;
@@ -106,6 +106,13 @@ impl From<procurement::Procurement> for ProcurementObject {
           },
         })
         .collect::<Vec<UplCandidate>>(),
+      status: match f.status {
+        procurement::Status::New => Status::New,
+        procurement::Status::Ordered => Status::Ordered,
+        procurement::Status::Arrived => Status::Arrived,
+        procurement::Status::Processing => Status::Processing,
+        procurement::Status::Closed => Status::Closed,
+      } as i32,
       created_at: f.created_at.to_rfc3339(),
       created_by: f.created_by,
     }
@@ -118,11 +125,22 @@ impl From<procurement::Procurement> for ProcurementInfoObject {
       id: p.id,
       source_id: p.source_id,
       sku_count: p.items.len() as u32,
+      sku_piece_count: p
+        .items
+        .iter()
+        .fold(0, |acc, sku_item| acc + sku_item.ordered_amount),
       upl_count: p.upl_candidates.len() as u32,
       estimated_delivery_date: match p.estimated_delivery_date {
         Some(dd) => dd.to_rfc3339(),
         None => "".to_string(),
       },
+      status: match p.status {
+        procurement::Status::New => Status::New,
+        procurement::Status::Ordered => Status::Ordered,
+        procurement::Status::Arrived => Status::Arrived,
+        procurement::Status::Processing => Status::Processing,
+        procurement::Status::Closed => Status::Closed,
+      } as i32,
       created_at: p.created_at.to_rfc3339(),
       created_by: p.created_by,
     }
