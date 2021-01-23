@@ -121,6 +121,7 @@ where
     upl_id: String,
     sku: u32,
     piece: u32,
+    opened_sku: bool,
     best_before: Option<DateTime<Utc>>,
   ) -> ProcResult<&Self> {
     // Check if UPL ID already there
@@ -128,9 +129,13 @@ where
       return Err("Az adott UPL azonosító már a rendelésben szerepel!".into());
     }
     // Push UPL candidate
-    self
-      .upl_candidates
-      .push(UplCandidate::new(upl_id, sku, piece, best_before)?);
+    self.upl_candidates.push(UplCandidate::new(
+      upl_id,
+      sku,
+      piece,
+      opened_sku,
+      best_before,
+    )?);
     // Return self ref
     Ok(self)
   }
@@ -339,6 +344,9 @@ pub struct UplCandidate {
   // if > 0 its bulk;
   // otherwise its simple
   pub upl_piece: u32,
+  // If true,  its an OpenedSku
+  // If false, its a Single or Bulk Sku
+  pub opened_sku: bool,
   // Optional
   pub best_before: Option<DateTime<Utc>>,
 }
@@ -348,6 +356,7 @@ impl UplCandidate {
     upl_id: String,
     sku: u32,
     upl_piece: u32,
+    opened_sku: bool,
     best_before: Option<DateTime<Utc>>,
   ) -> ProcResult<Self> {
     // Check if ID correct to LuhnCheck
@@ -358,6 +367,7 @@ impl UplCandidate {
       upl_id,
       sku,
       upl_piece,
+      opened_sku,
       best_before,
     })
   }

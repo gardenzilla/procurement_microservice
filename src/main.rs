@@ -249,6 +249,7 @@ impl ProcurementService {
         upl_candidate.upl_id,
         upl_candidate.sku,
         upl_candidate.upl_piece,
+        upl_candidate.opened_sku,
         bdate,
       )
       .map_err(|e| ServiceError::bad_request(&e))?

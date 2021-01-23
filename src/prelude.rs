@@ -100,6 +100,7 @@ impl From<procurement::Procurement> for ProcurementObject {
           upl_id: upl.upl_id.clone(),
           sku: upl.sku,
           upl_piece: upl.upl_piece,
+          opened_sku: upl.opened_sku,
           best_before: match upl.best_before {
             Some(bbefore) => bbefore.to_rfc3339(),
             None => "".to_string(),
