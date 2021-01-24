@@ -262,13 +262,13 @@ where
         .upl_candidates
         .iter()
         .filter(|upl| upl.sku == item.sku)
-        .count();
+        .fold(0, |acc, uc| acc + uc.get_piece());
       // If UPL(s) missing! return error
-      if item.ordered_amount as usize != upl_count {
+      if item.ordered_amount != upl_count {
         return Err(format!(
           "Az alábbi SKU-hoz ({}) még hiányzik {} db UPL!",
           item.sku,
-          item.ordered_amount as usize - upl_count
+          item.ordered_amount - upl_count
         ));
       }
     }
