@@ -380,4 +380,12 @@ impl UplCandidate {
   pub fn update_best_before(&mut self, best_before: Option<DateTime<Utc>>) {
     self.best_before = best_before;
   }
+  pub fn get_piece(&self) -> u32 {
+    match self.opened_sku {
+      // If its an opened sku, its piece is 1
+      true => 1,
+      // Otherwise its piece is the upl_piece value
+      false => self.upl_piece,
+    }
+  }
 }

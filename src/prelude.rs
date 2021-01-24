@@ -130,7 +130,10 @@ impl From<procurement::Procurement> for ProcurementInfoObject {
         .items
         .iter()
         .fold(0, |acc, sku_item| acc + sku_item.ordered_amount),
-      upl_count: p.upl_candidates.len() as u32,
+      upl_count: p
+        .upl_candidates
+        .iter()
+        .fold(0, |acc, candidate| acc + candidate.get_piece()),
       estimated_delivery_date: match p.estimated_delivery_date {
         Some(dd) => dd.to_rfc3339(),
         None => "".to_string(),
