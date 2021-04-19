@@ -9,9 +9,11 @@ version = "0.1.0"
 [dependencies]
 chrono = {version = "0.4", features = ["serde"]}
 futures = "*"
+futures-util = "*"
 gzlib = "*"
 packman = "*"
 prost = "0.6"
 serde = {version = "1.0", features = ["derive"]}
-tokio = {version = "0.2", features = ["full"]}
-tonic = "0.3"
+tokio = {version = "1.0", features = ["full"]}
+tokio-stream = { version =  "0.1", features = ["net"] }
+tonic = "0.4.1"
